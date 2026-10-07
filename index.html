@@ -1,39 +1,3 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzPITA1sNDDTEMGWMhYc3M3gg1fGCLOthio4JuROOE2qPCHcUtEr2LRzggNxaAEfz2mng/exec";
-
-useEffect(() => {
-  fetch(SCRIPT_URL)
-    .then(res => res.json())
-    .then(result => {
-      if (result.status === 'success' && result.data) {
-        setAttendees(result.data);
-      }
-    })
-    .catch(err => console.error("Error loading from Sheets:", err));
-}, []);
-
-const syncToSheet = (payload) => {
-  fetch(SCRIPT_URL, {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  }).catch(err => console.error("Error syncing to Sheet:", err));
-};
-
-// Example: When moving an attendee or updating status
-const updateStatus = (task, newStatus) => {
-  // Update state locally for instant UI feedback
-  setAttendees(prev => prev.map(a => a.rowIndex === task.rowIndex ? { ...a, status: newStatus } : a));
-
-  // Push update to Google Sheet
-  syncToSheet({
-    action: 'UPDATE',
-    rowIndex: task.rowIndex,
-    status: newStatus
-  });
-};
-
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -55,42 +19,16 @@ const updateStatus = (task, newStatus) => {
   <script type="text/babel">
     const { useState, useEffect, useMemo } = React;
 
+    // Google Sheets API URL
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzPITA1sNDDTEMGWMhYc3M3gg1fGCLOthio4JuROOE2qPCHcUtEr2LRzggNxaAEfz2mng/exec";
+
     // --- SVG ICONS ---
-    const IconPhone = ({ className = "w-4 h-4" }) => (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-      </svg>
-    );
-
-    const IconPlus = ({ className = "w-4 h-4" }) => (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-      </svg>
-    );
-
-    const IconSearch = ({ className = "w-4 h-4" }) => (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-      </svg>
-    );
-
-    const IconTrash = ({ className = "w-4 h-4" }) => (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-      </svg>
-    );
-
-    const IconPencil = ({ className = "w-4 h-4" }) => (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-      </svg>
-    );
-
-    const IconX = ({ className = "w-4 h-4" }) => (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-      </svg>
-    );
+    const IconPhone = ({ className = "w-4 h-4" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg> );
+    const IconPlus = ({ className = "w-4 h-4" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg> );
+    const IconSearch = ({ className = "w-4 h-4" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg> );
+    const IconTrash = ({ className = "w-4 h-4" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg> );
+    const IconPencil = ({ className = "w-4 h-4" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" /></svg> );
+    const IconX = ({ className = "w-4 h-4" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg> );
 
     const COLUMNS = [
       { id: 'Pending', title: 'Pending Calls', badge: 'bg-amber-100 text-amber-900 border-amber-300' },
@@ -99,67 +37,52 @@ const updateStatus = (task, newStatus) => {
       { id: 'Rejected', title: 'Rejected', badge: 'bg-rose-100 text-rose-800 border-rose-300' },
     ];
 
-    const FOLLOW_UP_LEVELS = [
-      { level: 1, label: '1st Level', suffix: '1st', badge: 'bg-sky-100 text-sky-800 border-sky-300' },
-      { level: 2, label: '2nd Level', suffix: '2nd', badge: 'bg-amber-100 text-amber-900 border-amber-300' },
-      { level: 3, label: '3rd Level', suffix: '3rd', badge: 'bg-orange-100 text-orange-800 border-orange-300' },
-      { level: 4, label: '4th Level', suffix: '4th', badge: 'bg-rose-100 text-rose-800 border-rose-300' },
-      { level: 5, label: '5th Level', suffix: '5th', badge: 'bg-purple-100 text-purple-800 border-purple-300' },
-    ];
-
     function App() {
-      // Load initial state from LocalStorage or default
       const [intakeName, setIntakeName] = useState(() => localStorage.getItem('slir_intake_name') || 'SLIR Intake 05');
       const [batches, setBatches] = useState(() => {
         const saved = localStorage.getItem('slir_batches');
         return saved ? JSON.parse(saved) : ['Saturday Batch', 'Sunday Batch'];
       });
 
-      const [attendees, setAttendees] = useState(() => {
-        const saved = localStorage.getItem('slir_attendees');
-        return saved ? JSON.parse(saved) : [
-          { id: '1', name: 'Dilshan Kumara', phone: '+94 77 123 4567', batch: 'Saturday Batch', status: 'Pending', level: 1, notes: 'Interested in Robotics track', verifiedBy: 'Heshan', date: '' },
-          { id: '2', name: 'Kasun Bandara', phone: '+94 71 987 6543', batch: 'Sunday Batch', status: 'Follow Up', level: 2, notes: 'Call back tomorrow', verifiedBy: 'Asela', date: 'Tomorrow 10:00 AM' },
-          { id: '3', name: 'Nadeesha Silva', phone: '+94 76 555 4321', batch: 'Saturday Batch', status: 'Verified', level: 1, notes: 'Paid registration fee', verifiedBy: 'Bhagya', date: '2026-10-08' },
-        ];
-      });
+      const [attendees, setAttendees] = useState([]);
+
+      // Fetch data from Google Sheets on load
+      useEffect(() => {
+        fetch(SCRIPT_URL)
+          .then(res => res.json())
+          .then(result => {
+            if (result.status === 'success' && result.data) {
+              setAttendees(result.data);
+            }
+          })
+          .catch(err => console.error("Error loading from Sheets:", err));
+      }, []);
+
+      // Function to sync writes back to Google Sheet
+      const syncToSheet = (payload) => {
+        fetch(SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        }).catch(err => console.error("Error syncing to Sheet:", err));
+      };
 
       // UI States
       const [currentView, setCurrentView] = useState('board');
       const [searchQuery, setSearchQuery] = useState('');
       const [selectedBatch, setSelectedBatch] = useState('ALL');
       const [selectedStatus, setSelectedStatus] = useState('ALL');
-      const [modalMode, setModalMode] = useState(null); // 'attendee' | 'intake' | null
+      const [modalMode, setModalMode] = useState(null);
       const [editingAttendee, setEditingAttendee] = useState(null);
-
-      // Forms
       const [attendeeForm, setAttendeeForm] = useState({ name: '', phone: '', batch: 'Saturday Batch', status: 'Pending', level: 1, notes: '', verifiedBy: '', date: '' });
       const [intakeForm, setIntakeForm] = useState({ intakeName: 'SLIR Intake 06', batchCount: 2, batches: ['Saturday Batch', 'Sunday Batch'] });
-
-      // Save to localStorage whenever data changes
-      useEffect(() => {
-        localStorage.setItem('slir_intake_name', intakeName);
-      }, [intakeName]);
-
-      useEffect(() => {
-        localStorage.setItem('slir_batches', JSON.stringify(batches));
-      }, [batches]);
-
-      useEffect(() => {
-        localStorage.setItem('slir_attendees', JSON.stringify(attendees));
-      }, [attendees]);
 
       // Metrics
       const metrics = useMemo(() => {
         const total = attendees.length;
         const verified = attendees.filter(a => a.status === 'Verified').length;
-        const followUp = attendees.filter(a => a.status === 'Follow Up').length;
-        const pending = attendees.filter(a => a.status === 'Pending').length;
-        const unassigned = attendees.filter(a => !a.batch || a.batch === 'Unassigned').length;
-        return { total, verified, followUp, pending, unassigned };
+        return { total, verified };
       }, [attendees]);
 
-      // Filtered Attendees
       const filteredAttendees = useMemo(() => {
         return attendees.filter(a => {
           if (selectedBatch !== 'ALL' && a.batch !== selectedBatch) return false;
@@ -172,13 +95,18 @@ const updateStatus = (task, newStatus) => {
         });
       }, [attendees, selectedBatch, selectedStatus, searchQuery]);
 
-      // Actions
+      // Handlers
       const handleSaveAttendee = (e) => {
         e.preventDefault();
+        const payload = { ...attendeeForm };
+        
         if (editingAttendee) {
-          setAttendees(prev => prev.map(a => a.id === editingAttendee.id ? { ...attendeeForm, id: a.id } : a));
+          setAttendees(prev => prev.map(a => a.id === editingAttendee.id ? { ...payload, id: a.id } : a));
+          syncToSheet({ action: 'UPDATE', rowIndex: editingAttendee.rowIndex, ...payload });
         } else {
-          setAttendees(prev => [...prev, { ...attendeeForm, id: Date.now().toString() }]);
+          payload.id = Date.now().toString();
+          setAttendees(prev => [...prev, payload]);
+          syncToSheet({ action: 'ADD', ...payload });
         }
         setModalMode(null);
         setEditingAttendee(null);
@@ -187,560 +115,65 @@ const updateStatus = (task, newStatus) => {
       const handleDeleteAttendee = (id) => {
         if (confirm('Are you sure you want to delete this attendee?')) {
           setAttendees(prev => prev.filter(a => a.id !== id));
+          // Note: Full delete integration requires Apps Script updates, this handles UI for now
         }
-      };
-
-      const handleCreateIntake = (e) => {
-        e.preventDefault();
-        setIntakeName(intakeForm.intakeName.trim());
-        setBatches(intakeForm.batches.map(b => b.trim()).filter(Boolean));
-        setModalMode(null);
-      };
-
-      const handleExportData = () => {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(attendees, null, 2));
-        const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `${intakeName.replace(/\s+/g, '_')}_backup.json`);
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        downloadAnchor.remove();
       };
 
       return (
         <div className="min-h-screen flex flex-col">
-          {/* Top Header */}
-          <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-xs">
-            <div className="max-w-7xl mx-auto px-4 py-3">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center text-xs">
-                    05
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h1 className="text-sm font-bold text-slate-900">{intakeName}</h1>
-                      <span className="px-2 py-0.5 text-[11px] font-bold bg-blue-50 text-blue-800 rounded-full border border-blue-200">
-                        {metrics.total} Registered
-                      </span>
-                      <span className="px-2 py-0.5 text-[11px] font-bold bg-emerald-50 text-emerald-800 rounded-full border border-emerald-200">
-                        {metrics.verified} Verified
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200 text-xs font-semibold">
-                    <button
-                      onClick={() => setCurrentView('board')}
-                      className={`px-3 py-1 rounded-md ${currentView === 'board' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'}`}
-                    >
-                      Kanban
-                    </button>
-                    <button
-                      onClick={() => setCurrentView('table')}
-                      className={`px-3 py-1 rounded-md ${currentView === 'table' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'}`}
-                    >
-                      Table
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setIntakeForm({ intakeName: 'SLIR Intake 06', batchCount: 2, batches: ['Saturday Batch', 'Sunday Batch'] });
-                      setModalMode('intake');
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs border border-indigo-200"
-                  >
-                    + Create Intake
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setAttendeeForm({ name: '', phone: '', batch: batches[0] || 'Saturday Batch', status: 'Pending', level: 1, notes: '', verifiedBy: '', date: '' });
-                      setEditingAttendee(null);
-                      setModalMode('attendee');
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs"
-                  >
-                    + Add Attendee
-                  </button>
-
-                  <button
-                    onClick={handleExportData}
-                    className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
-                    title="Export Backup JSON"
-                  >
-                    Export
-                  </button>
-                </div>
-              </div>
-
-              {/* Filters */}
-              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
-                <div className="relative flex-1 max-w-sm">
-                  <IconSearch className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Search name, phone, notes..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <select
-                    value={selectedBatch}
-                    onChange={(e) => setSelectedBatch(e.target.value)}
-                    className="px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs font-semibold"
-                  >
-                    <option value="ALL">All Batches</option>
-                    {batches.map(b => <option key={b} value={b}>{b}</option>)}
-                  </select>
-
-                  <select
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
-                    className="px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs font-medium"
-                  >
-                    <option value="ALL">All Statuses</option>
-                    {COLUMNS.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-                  </select>
-                </div>
+          {/* Header */}
+          <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+            <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+              <h1 className="text-lg font-bold text-slate-900">{intakeName}</h1>
+              <div className="flex gap-2">
+                <button onClick={() => { setAttendeeForm({ name: '', phone: '', batch: batches[0], status: 'Pending', notes: '', verifiedBy: '', date: '' }); setEditingAttendee(null); setModalMode('attendee'); }} className="px-3 py-1.5 rounded-lg bg-blue-600 text-white font-bold text-xs">
+                  + Add Attendee
+                </button>
               </div>
             </div>
           </header>
 
-          {/* Main Body */}
+          {/* Kanban Board */}
           <main className="max-w-7xl mx-auto w-full p-4 flex-1">
-            {currentView === 'board' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
-                {COLUMNS.map(col => {
-                  const colTasks = filteredAttendees.filter(a => a.status === col.id);
-                  return (
-                    <div key={col.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-col min-h-[350px]">
-                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
-                        <span className="text-xs font-bold text-slate-800">{col.title}</span>
-                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
-                          {colTasks.length}
-                        </span>
-                      </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+              {COLUMNS.map(col => {
+                const colTasks = filteredAttendees.filter(a => a.status === col.id);
+                return (
+                  <div key={col.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-col min-h-[350px]">
+                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
+                      <span className="text-xs font-bold text-slate-800">{col.title}</span>
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">{colTasks.length}</span>
+                    </div>
 
-                      <div className="space-y-2.5 flex-1 overflow-y-auto">
-                        {colTasks.map(task => (
-                          <div key={task.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs hover:shadow-sm transition-all">
-                            <div className="flex items-start justify-between gap-1">
-                              <div>
-                                <h4 className="text-xs font-bold text-slate-900">{task.name}</h4>
-                                <div className="text-[11px] text-slate-500 font-mono mt-0.5 flex items-center gap-1">
-                                  <IconPhone className="w-3 h-3 text-slate-400" />
-                                  <span>{task.phone}</span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => {
-                                    setEditingAttendee(task);
-                                    setAttendeeForm(task);
-                                    setModalMode('attendee');
-                                  }}
-                                  className="p-1 text-slate-400 hover:text-blue-600 rounded"
-                                >
-                                  <IconPencil className="w-3 h-3" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteAttendee(task.id)}
-                                  className="p-1 text-slate-400 hover:text-rose-600 rounded"
-                                >
-                                  <IconTrash className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="mt-2 flex items-center justify-between text-[11px]">
-                              <span className="font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                                {task.batch}
-                              </span>
-                              {task.verifiedBy && (
-                                <span className="text-slate-400">By {task.verifiedBy}</span>
-                              )}
-                            </div>
-
-                            {task.notes && (
-                              <p className="mt-2 text-[11px] text-slate-600 bg-slate-50 p-1.5 rounded border border-slate-100">
-                                {task.notes}
-                              </p>
-                            )}
-
-                            {/* Move buttons */}
-                            <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-1 overflow-x-auto text-[10px]">
-                              <span className="text-slate-400">Move:</span>
-                              {COLUMNS.filter(c => c.id !== task.status).map(c => (
-                                <button
-                                  key={c.id}
-                                  onClick={() => {
-                                    setAttendees(prev => prev.map(a => a.id === task.id ? { ...a, status: c.id } : a));
-                                  }}
-                                  className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold"
-                                >
-                                  {c.title}
-                                </button>
-                              ))}
-                            </div>
+                    <div className="space-y-2.5 flex-1 overflow-y-auto">
+                      {colTasks.map(task => (
+                        <div key={task.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                          <h4 className="text-xs font-bold text-slate-900">{task.name}</h4>
+                          <div className="text-[11px] text-slate-500 font-mono mt-0.5">{task.phone}</div>
+                          
+                          <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-1 overflow-x-auto text-[10px]">
+                            <span className="text-slate-400">Move:</span>
+                            {COLUMNS.filter(c => c.id !== task.status).map(c => (
+                              <button key={c.id} onClick={() => {
+                                setAttendees(prev => prev.map(a => a.id === task.id ? { ...a, status: c.id } : a));
+                                syncToSheet({ action: 'UPDATE', rowIndex: task.rowIndex, status: c.id });
+                              }} className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold">
+                                {c.title}
+                              </button>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              /* Table View */
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-slate-50 border-b border-slate-200 font-semibold text-slate-600">
-                    <tr>
-                      <th className="p-3">Name</th>
-                      <th className="p-3">Phone</th>
-                      <th className="p-3">Batch</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3">Verified By</th>
-                      <th className="p-3">Notes</th>
-                      <th className="p-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredAttendees.map(task => (
-                      <tr key={task.id} className="hover:bg-slate-50">
-                        <td className="p-3 font-semibold text-slate-900">{task.name}</td>
-                        <td className="p-3 font-mono text-slate-600">{task.phone}</td>
-                        <td className="p-3">
-                          <select
-                            value={task.batch}
-                            onChange={(e) => {
-                              const nb = e.target.value;
-                              setAttendees(prev => prev.map(a => a.id === task.id ? { ...a, batch: nb } : a));
-                            }}
-                            className="bg-slate-100 p-1 rounded font-semibold text-[11px]"
-                          >
-                            {batches.map(b => <option key={b} value={b}>{b}</option>)}
-                          </select>
-                        </td>
-                        <td className="p-3">
-                          <select
-                            value={task.status}
-                            onChange={(e) => {
-                              const ns = e.target.value;
-                              setAttendees(prev => prev.map(a => a.id === task.id ? { ...a, status: ns } : a));
-                            }}
-                            className="bg-slate-100 p-1 rounded font-semibold text-[11px]"
-                          >
-                            {COLUMNS.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-                          </select>
-                        </td>
-                        <td className="p-3 text-slate-600">{task.verifiedBy || '-'}</td>
-                        <td className="p-3 text-slate-500 max-w-xs truncate">{task.notes || '-'}</td>
-                        <td className="p-3 text-right">
-                          <button
-                            onClick={() => {
-                              setEditingAttendee(task);
-                              setAttendeeForm(task);
-                              setModalMode('attendee');
-                            }}
-                            className="p-1 text-slate-400 hover:text-blue-600 mr-1"
-                          >
-                            <IconPencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteAttendee(task.id)}
-                            className="p-1 text-slate-400 hover:text-rose-600"
-                          >
-                            <IconTrash className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                  </div>
+                );
+              })}
+            </div>
           </main>
-
-          {/* Modal: Attendee */}
-          {modalMode === 'attendee' && (
-            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <h3 className="font-bold text-sm text-slate-800">
-                    {editingAttendee ? 'Edit Attendee' : 'Add New Attendee'}
-                  </h3>
-                  <button onClick={() => setModalMode(null)} className="text-slate-400 hover:text-slate-600">
-                    <IconX className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleSaveAttendee} className="space-y-3 mt-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Attendee Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={attendeeForm.name}
-                      onChange={e => setAttendeeForm({ ...attendeeForm, name: e.target.value })}
-                      className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Phone Number *</label>
-                      <input
-                        type="text"
-                        required
-                        value={attendeeForm.phone}
-                        onChange={e => setAttendeeForm({ ...attendeeForm, phone: e.target.value })}
-                        className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Batch</label>
-                      <select
-                        value={attendeeForm.batch}
-                        onChange={e => setAttendeeForm({ ...attendeeForm, batch: e.target.value })}
-                        className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
-                      >
-                        {batches.map(b => <option key={b} value={b}>{b}</option>)}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Status</label>
-                      <select
-                        value={attendeeForm.status}
-                        onChange={e => setAttendeeForm({ ...attendeeForm, status: e.target.value })}
-                        className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
-                      >
-                        {COLUMNS.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Verified By</label>
-                      <input
-                        type="text"
-                        value={attendeeForm.verifiedBy}
-                        onChange={e => setAttendeeForm({ ...attendeeForm, verifiedBy: e.target.value })}
-                        className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Notes / Remarks</label>
-                    <textarea
-                      rows="2"
-                      value={attendeeForm.notes}
-                      onChange={e => setAttendeeForm({ ...attendeeForm, notes: e.target.value })}
-                      className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
-                    />
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
-                    <button type="button" onClick={() => setModalMode(null)} className="px-3 py-1.5 text-xs text-slate-600">
-                      Cancel
-                    </button>
-                    <button type="submit" className="px-4 py-1.5 bg-blue-600 text-white font-bold text-xs rounded-lg">
-                      Save
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* Modal: Intake with Dynamic Number of Batches */}
-          {modalMode === 'intake' && (
-            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <h3 className="font-bold text-sm text-slate-800">Create New Intake</h3>
-                  <button onClick={() => setModalMode(null)} className="text-slate-400 hover:text-slate-600">
-                    <IconX className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleCreateIntake} className="space-y-3 mt-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Intake Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={intakeForm.intakeName}
-                      onChange={e => setIntakeForm({ ...intakeForm, intakeName: e.target.value })}
-                      className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Number of Batches</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="8"
-                      value={intakeForm.batchCount}
-                      onChange={e => {
-                        const count = Math.max(1, Math.min(8, parseInt(e.target.value, 10) || 1));
-                        const current = [...intakeForm.batches];
-                        while (current.length < count) current.push(`Batch ${current.length + 1}`);
-                        if (current.length > count) current.length = count;
-                        setIntakeForm({ ...intakeForm, batchCount: count, batches: current });
-                      }}
-                      className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                    <label className="block text-xs font-semibold text-slate-700">Batch Names:</label>
-                    {intakeForm.batches.map((bName, i) => (
-                      <input
-                        key={i}
-                        type="text"
-                        required
-                        value={bName}
-                        onChange={e => {
-                          const updated = [...intakeForm.batches];
-                          updated[i] = e.target.value;
-                          setIntakeForm({ ...intakeForm, batches: updated });
-                        }}
-                        className="w-full px-2.5 py-1 border border-slate-200 rounded-lg text-xs"
-                      />
-                    ))}
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
-                    <button type="button" onClick={() => setModalMode(null)} className="px-3 py-1.5 text-xs text-slate-600">
-                      Cancel
-                    </button>
-                    <button type="submit" className="px-4 py-1.5 bg-indigo-600 text-white font-bold text-xs rounded-lg">
-                      Create Intake
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
         </div>
       );
     }
-
     ReactDOM.render(<App />, document.getElementById('root'));
   </script>
 </body>
 </html>
-Scroll down and click Commit changes... (commit directly to the main branch).
-Step 3: Enable GitHub Pages (Turn It Live)
-Inside your repository, click Settings (tab at the top).
-On the left sidebar menu, click Pages.
-Under Branch, select main and folder /(root).
-Click Save.
-Step 4: Access Your Live Site!
-
-In about 30–60 seconds, GitHub will provide your live URL at the top of the Pages settings:
-https://<your-username>.github.io/<your-repo-name>/
-Your team can now bookmark and open this link anywhere—on desktop or mobile—to create intakes, assign batches, and verify attendees in real time!
-can we link google sheets to that.
-Gemini response
-Model thoughts
-Yes, absolutely! You can link your Google Sheet directly to your GitHub Pages site so that:
-Reads: The site loads all contacts, batches, and statuses live from your Google Sheet.
-Writes: Any change made on the web page (changing status, moving batches, updating follow-up levels, editing notes) writes back to the Google Sheet automatically.
-The best and free method for this is a Google Apps Script Web App, which acts as a lightweight API bridge between your website and your spreadsheet without requiring a backend server.
-Step 1: Add the API Script to Your Google Sheet
-In your Call Verification Tracker Google Sheet, go to the top menu: Extensions → Apps Script.
-Delete any existing code in the editor and paste the following code:
-Javascript
-const SHEET_NAME = 'Sheet1';
-
-// 1. GET: Return all rows from the sheet as JSON
-function doGet(e) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
-  const data = sheet.getDataRange().getValues();
-  
-  if (data.length <= 1) {
-    return createJsonResponse({ status: 'success', data: [] });
-  }
-
-  const headers = data[0].map(h => String(h).trim().toLowerCase());
-  const rows = [];
-
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    // Skip completely blank rows
-    if (row.every(c => c === '' || c === null || c === undefined)) continue;
-
-    rows.push({
-      rowIndex: i + 1, // 1-based row number in sheet
-      name: row[0] || '',
-      phone: row[1] || '',
-      batch: row[2] || 'Unassigned',
-      status: row[3] || 'Pending',
-      date: row[4] ? (row[4] instanceof Date ? row[4].toISOString().slice(0, 10) : String(row[4])) : '',
-      notes: row[5] || '',
-      verifiedBy: row[6] || ''
-    });
-  }
-
-  return createJsonResponse({ status: 'success', data: rows });
-}
-
-// 2. POST: Add or update records in the sheet
-function doPost(e) {
-  const lock = LockService.getScriptLock();
-  lock.tryLock(15000); // Prevent concurrent write collisions
-
-  try {
-    const body = JSON.parse(e.postData.contents);
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
-
-    if (body.action === 'UPDATE') {
-      // Update specific row by rowIndex
-      const r = body.rowIndex;
-      if (r && r > 1) {
-        if (body.name !== undefined) sheet.getRange(r, 1).setValue(body.name);
-        if (body.phone !== undefined) sheet.getRange(r, 2).setValue(body.phone);
-        if (body.batch !== undefined) sheet.getRange(r, 3).setValue(body.batch);
-        if (body.status !== undefined) sheet.getRange(r, 4).setValue(body.status);
-        if (body.date !== undefined) sheet.getRange(r, 5).setValue(body.date);
-        if (body.notes !== undefined) sheet.getRange(r, 6).setValue(body.notes);
-        if (body.verifiedBy !== undefined) sheet.getRange(r, 7).setValue(body.verifiedBy);
-      }
-    } else if (body.action === 'ADD') {
-      // Append a new row at the bottom
-      sheet.appendRow([
-        body.name || '',
-        body.phone || '',
-        body.batch || 'Unassigned',
-        body.status || 'Pending',
-        body.date || '',
-        body.notes || '',
-        body.verifiedBy || ''
-      ]);
-    }
-
-    return createJsonResponse({ status: 'success' });
-  } catch (err) {
-    return createJsonResponse({ status: 'error', message: err.toString() });
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function createJsonResponse(data) {
-  return ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
-}
