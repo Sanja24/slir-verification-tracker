@@ -1,255 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SLIR Intake 05 Verification</title>
-  
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- React & Babel for in-browser execution -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SLIR Verification Tracker</title>
   <style>
-    /* Custom scrollbar for columns */
-    .kanban-col::-webkit-scrollbar { width: 6px; }
-    .kanban-col::-webkit-scrollbar-track { background: transparent; }
-    .kanban-col::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden; /* Prevents double scrollbars */
+    }
+    iframe {
+      width: 100%;
+      height: 100vh;
+      border: none;
+    }
   </style>
 </head>
-<body class="bg-[#f4f7f9] text-slate-800 antialiased font-sans h-screen flex flex-col overflow-hidden">
-  <div id="root" class="flex-1 flex flex-col h-full"></div>
+<body>
 
-  <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+  <!-- Your live Google Sheet embedded directly -->
+  <iframe src="https://docs.google.com/spreadsheets/d/1RQ7NvWOwk0zQlyxS9qyG34gKCmmXNA97kb3gZTp02Sw/edit?embedded=true"></iframe>
 
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzPITA1sNDDTEMGWMhYc3M3gg1fGCLOthio4JuROOE2qPCHcUtEr2LRzggNxaAEfz2mng/exec";
-
-    // --- ICONS ---
-    const IconSearch = ({ className = "w-4 h-4" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> );
-    const IconPlus = ({ className = "w-4 h-4" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> );
-    const IconPencil = ({ className = "w-4 h-4" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> );
-    const IconTrash = ({ className = "w-4 h-4" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> );
-    const IconGrip = ({ className = "w-4 h-4" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg> );
-    const IconPhone = ({ className = "w-3.5 h-3.5" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> );
-    const IconCopy = ({ className = "w-3.5 h-3.5" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> );
-    const IconUser = ({ className = "w-3.5 h-3.5" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> );
-    const IconCalendar = ({ className = "w-3.5 h-3.5" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> );
-
-    const COLUMNS = [
-      { id: 'Pending', title: 'Pending Calls', sub: 'Includes rows 217-232 (WhatsApp)', color: 'border-yellow-400', bg: 'bg-yellow-50', text: 'text-yellow-800', icon: '🕒' },
-      { id: 'Follow Up', title: 'Follow Up', sub: 'No answer / busy / retry', color: 'border-indigo-400', bg: 'bg-indigo-50', text: 'text-indigo-800', icon: '❕' },
-      { id: 'Verified', title: 'Verified', sub: 'Confirmed & seat allocated', color: 'border-emerald-400', bg: 'bg-emerald-50', text: 'text-emerald-800', icon: '☑️' },
-      { id: 'Rejected', title: 'Rejected / Invalid', sub: 'Wrong number / declined', color: 'border-rose-400', bg: 'bg-rose-50', text: 'text-rose-800', icon: '⊗' },
-    ];
-
-    function App() {
-      const [attendees, setAttendees] = useState([]);
-      const [searchQuery, setSearchQuery] = useState('');
-
-      useEffect(() => {
-        fetch(SCRIPT_URL)
-          .then(res => res.json())
-          .then(result => {
-            if (result.status === 'success' && result.data) setAttendees(result.data);
-          })
-          .catch(err => console.error(err));
-
-          // Load Dummy Data to match image immediately
-          if(attendees.length === 0) {
-              setAttendees([
-                  { id: 1, name: 'Attendee (Row 218)', phone: '+94 71 602 7388', batch: 'Unassigned', status: 'Pending', verifiedBy: 'Heshan', inGroup: true, date: '' },
-                  { id: 2, name: 'Attendee (Row 219)', phone: '+94 76 200 9959', batch: 'Unassigned', status: 'Pending', verifiedBy: '', inGroup: true, date: '' },
-                  { id: 3, name: 'Contact', phone: '+94 70 558 7023', batch: 'Saturday Batch', status: 'Follow Up', verifiedBy: '', level: 3, date: '' },
-                  { id: 4, name: 'Dolee', phone: '+94 71 713 0386', batch: 'Sunday Batch', status: 'Follow Up', verifiedBy: '', level: 1, date: '' },
-                  { id: 5, name: 'Dilshan Electrical Eng', phone: '+94 77 009 0096', batch: 'Saturday Batch', status: 'Verified', verifiedBy: '', date: '2026-10-06' },
-                  { id: 6, name: 'Able Adithya', phone: '+94 77 951 4837', batch: 'Saturday Batch', status: 'Verified', verifiedBy: '', date: '' },
-                  { id: 7, name: 'Akindu Nimsara', phone: '+94 76 465 7052', batch: 'Saturday Batch', status: 'Verified', verifiedBy: '', date: '' },
-                  { id: 8, name: 'Lakshan Senarathna', phone: '+94 71 622 7550', batch: 'Saturday Batch', status: 'Rejected', verifiedBy: '', date: '2026-10-06' },
-                  { id: 9, name: 'Mihiranga Thennako', phone: '+94 77 869 5683', batch: 'Saturday Batch', status: 'Rejected', verifiedBy: '', date: '' }
-              ]);
-          }
-      }, []);
-
-      const filteredAttendees = useMemo(() => {
-        return attendees.filter(a => {
-          if (searchQuery.trim()) {
-            const q = searchQuery.toLowerCase();
-            return (a.name || '').toLowerCase().includes(q) || (a.phone || '').toLowerCase().includes(q);
-          }
-          return true;
-        });
-      }, [attendees, searchQuery]);
-
-      return (
-        <div className="flex-1 flex flex-col h-full">
-          {/* Top Header */}
-          <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shrink-0">
-            <div className="flex items-center gap-4">
-              <div className="bg-blue-600 text-white font-bold w-10 h-10 rounded-lg flex items-center justify-center text-lg">05</div>
-              <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">SLIR Intake 05 Verification</h1>
-              <div className="flex gap-2 ml-2">
-                <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-bold text-xs border border-blue-200">231 Contacts</span>
-                <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 font-bold text-xs border border-emerald-200">198 Verified</span>
-                <span className="px-3 py-1 rounded-full bg-yellow-50 text-yellow-700 font-bold text-xs border border-yellow-300">⚠️ 16 Unassigned</span>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
-                <button className="px-3 py-1.5 bg-white shadow-sm rounded text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <IconGrip className="w-4 h-4"/> Kanban
-                </button>
-                <button className="px-3 py-1.5 rounded text-sm font-semibold text-slate-500 hover:text-slate-700 flex items-center gap-2">
-                   Table (231)
-                </button>
-              </div>
-              <button className="px-4 py-2 border-2 border-indigo-100 text-indigo-600 bg-indigo-50 font-bold rounded-lg text-sm flex items-center gap-2 hover:bg-indigo-100">
-                <IconPlus /> Create Intake
-              </button>
-              <button className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg text-sm flex items-center gap-2 hover:bg-blue-700 shadow-sm">
-                <IconPlus /> Add Attendee
-              </button>
-            </div>
-          </header>
-
-          {/* Filter Bar */}
-          <div className="bg-white border-b border-slate-200 px-6 py-2.5 flex justify-between items-center shrink-0">
-            <div className="relative w-96">
-              <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="Search attendee, phone, batch, row #..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-1.5 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
-              />
-            </div>
-            <div className="flex gap-2">
-              <select className="border border-slate-300 rounded-lg text-sm py-1.5 pl-3 pr-8 bg-white font-medium text-slate-700"><option>All Batches (231)</option></select>
-              <select className="border border-slate-300 rounded-lg text-sm py-1.5 pl-3 pr-8 bg-white font-medium text-slate-700"><option>All Statuses</option></select>
-              <select className="border border-slate-300 rounded-lg text-sm py-1.5 pl-3 pr-8 bg-white font-medium text-slate-700"><option>All Levels</option></select>
-              <select className="border border-slate-300 rounded-lg text-sm py-1.5 pl-3 pr-8 bg-white font-medium text-slate-700"><option>All Agents</option></select>
-            </div>
-          </div>
-
-          {/* Kanban Board Area */}
-          <main className="flex-1 overflow-x-auto overflow-y-hidden p-6">
-            <div className="flex gap-6 h-full items-start min-w-max">
-              {COLUMNS.map(col => {
-                const colTasks = filteredAttendees.filter(a => a.status === col.id);
-                return (
-                  <div key={col.id} className="w-[360px] h-full flex flex-col">
-                    
-                    {/* Column Header */}
-                    <div className={`bg-white rounded-t-xl border-t-4 border-l border-r border-slate-200 p-4 shrink-0 ${col.color}`}>
-                      <div className="flex justify-between items-start">
-                        <div className="flex gap-2">
-                          <span className="text-lg">{col.icon}</span>
-                          <div>
-                            <h2 className="font-extrabold text-slate-900">{col.title}</h2>
-                            <p className="text-xs text-slate-500 font-medium mt-0.5">{col.sub}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${col.bg} ${col.text}`}>{colTasks.length}</span>
-                          <button className={`p-1 rounded hover:${col.bg} ${col.text}`}><IconPlus /></button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Column Cards Container */}
-                    <div className="kanban-col flex-1 overflow-y-auto bg-white border-l border-r border-b border-slate-200 rounded-b-xl p-3 flex flex-col gap-3">
-                      {colTasks.map(task => (
-                        <div key={task.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow group relative">
-                          
-                          {/* Card Header */}
-                          <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-bold text-slate-900 text-[15px]">{task.name}</h3>
-                            <div className="flex gap-1 text-slate-300">
-                              <button className="p-1 hover:text-blue-500 rounded"><IconPencil className="w-3.5 h-3.5"/></button>
-                              <button className="p-1 hover:text-red-500 rounded"><IconTrash className="w-3.5 h-3.5"/></button>
-                              <button className="p-1 cursor-grab hover:text-slate-500"><IconGrip className="w-3.5 h-3.5"/></button>
-                            </div>
-                          </div>
-
-                          {/* Batch Pill */}
-                          <div className="mb-3">
-                            <select className={`text-xs font-bold px-2.5 py-1 rounded-full border appearance-none pr-6 bg-no-repeat bg-[right_0.4rem_center] bg-[length:10px] cursor-pointer ${task.batch === 'Unassigned' ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-blue-50 text-blue-800 border-blue-200'}`} style={{backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`}}>
-                              <option>{task.batch === 'Unassigned' ? '⚠️ Unassigned' : task.batch}</option>
-                              <option>Saturday Batch</option>
-                              <option>Sunday Batch</option>
-                            </select>
-                          </div>
-
-                          {/* Phone & Meta */}
-                          <div className="flex items-center gap-2 text-slate-500 text-sm font-mono mb-3">
-                            <IconPhone />
-                            <span>{task.phone}</span>
-                            <button className="hover:text-slate-800"><IconCopy /></button>
-                          </div>
-
-                          {/* Dynamic Content based on Column */}
-                          {col.id === 'Pending' && task.inGroup && (
-                            <div className="mb-3">
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
-                                <span>📄</span> In WhatsApp Group
-                              </span>
-                            </div>
-                          )}
-
-                          {col.id === 'Follow Up' && (
-                            <div className="mb-4 bg-slate-50 rounded-lg p-3 border border-slate-100">
-                              <div className="flex justify-between items-center mb-2">
-                                <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-orange-100 text-orange-800 border border-orange-200">
-                                  {task.level ? `${task.level}rd Level Follow Up` : 'Follow Up'}
-                                </span>
-                                <button className="text-[10px] font-bold text-indigo-600 bg-white border border-indigo-200 px-2 py-0.5 rounded">+ Add Time</button>
-                              </div>
-                              <div className="flex gap-1">
-                                {['1st', '2nd', '3rd', '4th', '5th', '+2h', 'Tmrw'].map(lvl => (
-                                  <button key={lvl} className={`flex-1 py-1 text-[10px] font-bold rounded border ${lvl === '3rd' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
-                                    {lvl}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Footer */}
-                          <div className="flex justify-between items-center pt-3 mt-1 border-t border-slate-100 border-dashed">
-                            <div className="relative">
-                              <select className={`text-xs font-bold pl-7 pr-6 py-1 rounded-full border appearance-none bg-no-repeat bg-[right_0.4rem_center] bg-[length:10px] cursor-pointer ${task.verifiedBy ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white text-slate-500 border-slate-200'}`} style={{backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`}}>
-                                <option>{task.verifiedBy || 'Agent'}</option>
-                                <option>Heshan</option>
-                              </select>
-                              <IconUser className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${task.verifiedBy ? 'text-emerald-600' : 'text-slate-400'}`} />
-                            </div>
-                            
-                            {task.date && (
-                              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
-                                <IconCalendar />
-                                <span>{task.date}</span>
-                              </div>
-                            )}
-                          </div>
-
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </main>
-        </div>
-      );
-    }
-    
-    ReactDOM.render(<App />, document.getElementById('root'));
-  </script>
 </body>
-</html>s
+</html>
